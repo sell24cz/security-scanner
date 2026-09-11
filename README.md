@@ -121,6 +121,10 @@ Host `data/` is mounted at container `/data/`. `RESULT_DIR` in the worker's outp
 
 ## n8n
 
+![n8n workflow: start a background scan, wait and check its status, then build and email the summary](docs/images/n8n-workflow.png)
+
+Workflow overview from the original editor. The public export uses a manual trigger and clearer node names; the screenshot shows the original schedule trigger and labels.
+
 Import [the sanitized workflow](n8n/security-scanner-full.json), then follow [the n8n integration guide](docs/n8n.md). The export starts inactive with a manual trigger, has no credential bindings and uses example email addresses. Configure it before running.
 
 ## After a restart
