@@ -1,0 +1,15 @@
+data/
+config/asn.txt
+.env
+.env.*
+!.env.example
+*.bak
+*.test-ok
+*.log
+*.tar.gz
+*.zip
+*.pem
+*.key
+.msmtprc
+.msmtp-password
+__pycache__/

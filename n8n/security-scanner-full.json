@@ -1,0 +1,513 @@
+{
+  "name": "Security Scanner - FULL scan",
+  "nodes": [
+    {
+      "parameters": {
+        "fromEmail": "scanner@example.com",
+        "toEmail": "admin@example.com",
+        "subject": "={{ 'FULL scan ' + $('Report fields').first().json.scan_id + ' - Critical: ' + $('Report fields').first().json.critical }}",
+        "emailFormat": "text",
+        "text": "=Full scan completed.\n\nSCAN ID: {{ $('Report fields').first().json.scan_id }}\nIPv4 addresses in scope: {{ $('Report fields').first().json.prefix_ips }}\nOpen ports: {{ $('Report fields').first().json.ports }}\nHTTP/HTTPS records: {{ $('Report fields').first().json.http }}\nCritical matches: {{ $('Report fields').first().json.critical }}\n\nCritical matches:\n{{ $('Report fields').first().json.critical_list }}\n\nSee the attached summary.txt.",
+        "options": {
+          "fileAttachments": "data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1776,
+        96
+      ],
+      "id": "1a936de4-5e68-4f67-856a-d0666ec46d6e",
+      "name": "Send report"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "sudo /opt/security-scanner/scripts/start-full-scan.sh"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -160
+      ],
+      "id": "9a96d24e-3a0e-4b78-9755-5c2fa051b272",
+      "name": "Start FULL"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e324fdd-6ae4-414a-9fc3-06e63bb073da",
+              "name": "status",
+              "value": "={{ ($json.stdout || '').match(/^STATUS=([A-Z_]+)$/m)?.[1] || 'UNKNOWN' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        64
+      ],
+      "id": "d6da5e99-20e4-48c4-94de-fdc9ab51d1ae",
+      "name": "Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "843c3e1d-3731-4eda-9006-a1e57800327e",
+              "leftValue": "={{$json.status}}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        80
+      ],
+      "id": "3e6b4dfe-baf1-4ec2-bee1-2c71e0dfcd7f",
+      "name": "Completed?"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ 'sudo /opt/security-scanner/scripts/check-full-scan.sh ' + $('Scan ID').first().json.scan_id }}"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        672,
+        64
+      ],
+      "id": "84b84e98-2ea2-41df-a1c1-2ff342356380",
+      "name": "Check FULL"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d730c87e-3b8d-4daf-bd64-e91a4db2b362",
+              "leftValue": "={{ (!['STARTING', 'RUNNING', 'COMPLETED'].includes($json.status) || Number($json.code ?? 0) !== 0 || $json.signal) ? 'FAILED' : $json.status }}",
+              "rightValue": "FAILED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        64
+      ],
+      "id": "46a3eb09-1ce8-4708-8cb2-94a6820cf07e",
+      "name": "Scan failed?"
+    },
+    {
+      "parameters": {
+        "content": "Start the full scan\nin the background",
+        "height": 80,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        320,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "e78d17a0-bbe9-4c84-8562-e1fd565743fe",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Handle scan failure\nor continue",
+        "height": 80,
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "0c34d235-da90-4856-916f-fe4350bc6a18",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Completed: prepare report fields.\nStill running: wait and check again.",
+        "height": 112,
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1248,
+        -64
+      ],
+      "typeVersion": 1,
+      "id": "f1cfe69a-2381-44ba-b3f6-219825d11b20",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Check scan status",
+        "height": 80,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        640,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "80ba94ec-710e-4874-bb24-222d15830d67",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -160
+      ],
+      "id": "d37d6c86-3cf1-419d-8f83-94b18b72a320",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "content": "Build and attach\nsummary.txt",
+        "height": 80,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1552,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "8c3e6873-d8a7-4960-aaea-28d987e1d207",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "resource": "file",
+        "operation": "download",
+        "path": "={{ (() => { const id = $('Report fields').first().json.scan_id; const expected = '/opt/security-scanner/data/results/full_' + id + '/summary.txt'; const path = ($json.stdout || '').match(/^SUMMARY=(.+)$/m)?.[1]?.trim(); if (Number($json.code ?? 0) !== 0 || path !== expected) throw new Error('Summary path does not match scan'); return path; })() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        176
+      ],
+      "id": "8f0a3ebd-8af8-428b-94ad-c700504ed760",
+      "name": "Download summary"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1f384e8c-51bc-4f23-9e30-bb027b6bd2d5",
+              "name": "critical",
+              "value": "={{ (() => { const value = ($json.stdout || '').match(/^CRITICAL=(\\d+)$/m)?.[1]; if (value === undefined) throw new Error('Missing CRITICAL in completed scan'); return value; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "238106a9-db5d-42fa-9750-109b54d464a5",
+              "name": "ports",
+              "value": "={{ (() => { const value = ($json.stdout || '').match(/^PORTS=(\\d+)$/m)?.[1]; if (value === undefined) throw new Error('Missing PORTS in completed scan'); return value; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "39bf3973-1b5b-4594-98e7-3434c02d3f69",
+              "name": "http",
+              "value": "={{ (() => { const value = ($json.stdout || '').match(/^HTTP=(\\d+)$/m)?.[1]; if (value === undefined) throw new Error('Missing HTTP in completed scan'); return value; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "ff5a3e58-15a5-4b68-bd24-f304911e8d05",
+              "name": "prefix_ips",
+              "value": "={{ (() => { const value = ($json.stdout || '').match(/^PREFIX_IPS=(\\d+)$/m)?.[1]; if (value === undefined) throw new Error('Missing PREFIX_IPS in completed scan'); return value; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "fe01fda0-2781-4454-a456-6127ccf08408",
+              "name": "critical_list",
+              "value": "={{ ($json.stdout || '').match(/CRITICAL_LIST_BEGIN([\\s\\S]*?)CRITICAL_LIST_END/)?.[1]?.trim() || 'Critical details unavailable; inspect scan results.' }}",
+              "type": "string"
+            },
+            {
+              "id": "b950e394-1ecc-4203-9ab2-2d2786a1d40c",
+              "name": "scan_id",
+              "value": "={{ $('Scan ID').first().json.scan_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1392,
+        96
+      ],
+      "id": "b14e3bcb-a417-4f70-9bb7-8c6b40fce6d0",
+      "name": "Report fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "47849679-1431-4d43-b455-55c3bd5416f6",
+              "name": "scan_id",
+              "value": "={{ (() => { const id = ($json.stdout || '').match(/^SCAN_ID=([0-9]{8}_[0-9]{6})$/m)?.[1]; if (Number($json.code ?? 0) !== 0 || !id) throw new Error('Start did not return a valid scan ID'); return id; })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        336,
+        64
+      ],
+      "id": "1e160d25-c36f-4848-8fad-50ae92e42df1",
+      "name": "Scan ID"
+    },
+    {
+      "parameters": {
+        "fromEmail": "scanner@example.com",
+        "toEmail": "admin@example.com",
+        "subject": "={{ 'FULL scan ' + $('Scan ID').first().json.scan_id + ' - ERROR / status: ' + ($json.status || 'UNKNOWN') }}",
+        "options": {},
+        "emailFormat": "text",
+        "text": "=Scan failed or its status could not be confirmed.\n\nSCAN ID: {{ $('Scan ID').first().json.scan_id }}\nStatus: {{ $json.status || 'UNKNOWN' }}\nCheck exit code: {{ $json.code ?? 'unavailable' }}\n\nInspect this execution in n8n."
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        368
+      ],
+      "id": "c998ef48-40ab-4690-87f5-15aefbd7b259",
+      "name": "Send error"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ 'sudo /opt/security-scanner/scripts/make-summary.sh ' + $('Report fields').first().json.scan_id }}"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -16
+      ],
+      "id": "e05080ce-3d10-491d-816f-ef0c0bbc10d0",
+      "name": "Build summary"
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        64
+      ],
+      "id": "ef22efad-6d3e-4e89-a4e6-eb998eddf444",
+      "name": "Wait"
+    }
+  ],
+  "connections": {
+    "Start FULL": {
+      "main": [
+        [
+          {
+            "node": "Scan ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status": {
+      "main": [
+        [
+          {
+            "node": "Scan failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completed?": {
+      "main": [
+        [
+          {
+            "node": "Report fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check FULL": {
+      "main": [
+        [
+          {
+            "node": "Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan failed?": {
+      "main": [
+        [
+          {
+            "node": "Send error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download summary": {
+      "main": [
+        [
+          {
+            "node": "Send report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report fields": {
+      "main": [
+        [
+          {
+            "node": "Build summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan ID": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build summary": {
+      "main": [
+        [
+          {
+            "node": "Download summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check FULL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Start FULL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

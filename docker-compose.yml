@@ -1,0 +1,13 @@
+services:
+  scanner:
+    build: .
+    container_name: security-scanner
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+    volumes:
+      - ./data:/data
+      - ./scripts:/scripts
+
+    working_dir: /data

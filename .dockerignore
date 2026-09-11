@@ -1,0 +1,9 @@
+data
+.git
+config
+.env*
+*.bak
+*.test-ok
+*.log
+*.pem
+*.key
